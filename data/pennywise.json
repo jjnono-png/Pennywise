@@ -1,0 +1,74 @@
+{
+  "tx": [
+    {
+      "id": "mwmypng19wor",
+      "type": "income",
+      "amount": 25000,
+      "desc": "Salary (demo)",
+      "date": "2026-11-08",
+      "demo": true
+    },
+    {
+      "id": "mwmypng16get",
+      "type": "income",
+      "amount": 1500,
+      "desc": "Freelance work (demo)",
+      "date": "2026-11-15",
+      "demo": true
+    },
+    {
+      "id": "mwmypng1xchc",
+      "type": "expense",
+      "amount": 350,
+      "desc": "Groceries (demo)",
+      "date": "2026-11-16",
+      "demo": true,
+      "category": "Food"
+    },
+    {
+      "id": "mwmypng1j5p6",
+      "type": "expense",
+      "amount": 120,
+      "desc": "Jeepney fare (demo)",
+      "date": "2026-11-17",
+      "demo": true,
+      "category": "Transport"
+    },
+    {
+      "id": "mwmypng1keqk",
+      "type": "expense",
+      "amount": 2200,
+      "desc": "Electric bill (demo)",
+      "date": "2026-11-13",
+      "demo": true,
+      "category": "Bills"
+    },
+    {
+      "id": "mwmypng1jt8i",
+      "type": "expense",
+      "amount": 1000,
+      "desc": "Emergency fund (demo)",
+      "date": "2026-11-14",
+      "demo": true,
+      "category": "Savings"
+    },
+    {
+      "id": "mwmypng1hp1f",
+      "type": "expense",
+      "amount": 480,
+      "desc": "Movie night (demo)",
+      "date": "2026-11-18",
+      "demo": true,
+      "category": "Others"
+    }
+  ],
+  "goals": [
+    {
+      "id": "mwmypng1tb11",
+      "name": "Emergency fund (demo)",
+      "target": 20000,
+      "saved": 5000,
+      "demo": true
+    }
+  ]
+}

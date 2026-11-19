@@ -1,0 +1,8 @@
+{
+  "name": "pennywise",
+  "version": "1.0.0",
+  "description": "Simple personal finance tracker. Track your money. Save smarter.",
+  "private": true,
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" }
+}
