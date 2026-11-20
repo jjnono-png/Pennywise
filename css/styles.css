@@ -47,3 +47,19 @@ label{display:block;font-weight:680;font-size:.9rem;margin:15px 0 6px}input,sele
 @media(max-width:850px){.side{width:215px;flex-basis:215px;padding:24px 13px}.tagline{font-size:.72rem}main{padding:30px 24px}}
 @media(max-width:680px){.app{display:block}.side{position:relative;width:100%;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:15px 16px}.logo{font-size:1.3rem}.tagline{padding:2px 12px 13px;margin-bottom:12px;border:0}#nav{display:flex;overflow-x:auto;gap:6px;padding-bottom:2px}#nav a{flex:0 0 auto;padding:9px 11px;font-size:.82rem;white-space:nowrap}#nav a:before{width:auto}main{padding:25px 16px}.hero{padding:22px}.hero .mini{grid-template-columns:1fr;gap:10px}.mini div{display:flex;justify-content:space-between;gap:12px}.g3{grid-template-columns:repeat(2,minmax(0,1fr))}.card{padding:18px}.stat b{font-size:1.25rem}}
 @media(max-width:390px){.g3{grid-template-columns:1fr}.row .btn{flex:1}}
+
+/* Login page, guest option and account box */
+[hidden]{display:none!important}
+#auth{min-height:100vh;display:grid;place-items:center;padding:24px}
+.authbox{width:100%;max-width:420px;padding:28px}
+.authbox .logo{padding:0}.authbox .tagline{padding:5px 0 18px;margin:0;border:0}
+.authbox .row .btn{flex:1}
+.full{width:100%;margin-top:14px}
+.check{display:flex;gap:8px;align-items:center;font-weight:500;margin:10px 0 0}
+.check input{width:18px;height:18px;min-height:0;padding:0}
+.or{display:flex;align-items:center;gap:12px;color:var(--muted);margin:20px 0 6px;font-size:.85rem}
+.or:before,.or:after{content:"";flex:1;height:1px;background:var(--line)}
+.small{font-size:.82rem;margin:14px 0 0}
+.userbox{margin-top:auto;border-top:1px solid var(--line);padding:16px 8px 0;font-size:.88rem}
+.userbox .who{margin-bottom:10px}
+@media(max-width:680px){.userbox{margin-top:12px;padding-top:12px}}

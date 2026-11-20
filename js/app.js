@@ -5,15 +5,19 @@
 /* ---------- 1. Data ---------- */
 const KEY = 'pennywise-v1', SIZE_KEY = 'pennywise-size';
 let CFG = { currency: '₱', currencyName: 'Philippine Peso', categories: ['Food', 'Transport', 'Bills', 'Savings', 'Others'] };  // overridden by config.json
-let CATS = CFG.categories, CUR = CFG.currency, useApi = false;
+let CATS = CFG.categories, CUR = CFG.currency, user = null, authed = false, serverOn = false, authMode = 'login';
+const MODE_KEY = 'pennywise-mode';
 const PAGES = [['dashboard', 'Dashboard'], ['transactions', 'Transactions'], ['reports', 'Reports'], ['goals', 'Savings Goals'], ['settings', 'Settings']];
 const SIZES = { normal: ['Normal', '112.5%'], large: ['Large', '125%'], xl: ['Extra Large', '150%'] };
 let S = { tx: [], goals: [] }, page = 'dashboard', period = 'week', query = '', filter = 'all', size = 'large', modalType = 'expense';
-try { S = JSON.parse(localStorage.getItem(KEY)) || S; size = localStorage.getItem(SIZE_KEY) || size; } catch (e) {}
+try { size = localStorage.getItem(SIZE_KEY) || size; } catch (e) {}
+function loadLocal() { try { S = JSON.parse(localStorage.getItem(KEY)) || { tx: [], goals: [] }; } catch (e) { S = { tx: [], goals: [] }; } }
 const save = () => {
-  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
-  if (useApi) fetch('api/data', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(S) })
-    .then(r => { if (!r.ok) throw 0; }).catch(() => toast('Could not save to the server. A copy is kept in this browser.'));
+  if (user) {
+    fetch('api/data', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(S) })
+      .then(r => { if (r.status === 401) { user = null; showAuth('Your session ended. Please log in again.'); } else if (!r.ok) throw 0; })
+      .catch(() => toast('Could not save to the server. Please try again.'));
+  } else { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 };
 
 /* ---------- 2. Helpers ---------- */
@@ -103,7 +107,7 @@ function goalsView() {
   <div class="grid g2">${S.goals.length ? S.goals.map(g => goalCard(g, true)).join('') : `<div class="card" style="grid-column:1/-1">${empty('No savings goals yet. Press “New Goal” to start.')}</div>`}</div>`;
 }
 function settingsView() {
-  return `<h1>Settings</h1><p class="sub">${useApi ? 'Your information is saved in the file data/pennywise.json.' : 'Your information is saved only in this browser.'}</p>
+  return `<h1>Settings</h1><p class="sub">${user ? 'Signed in as ' + esc(user) + '. Your information is saved on the server.' : 'Guest mode: your information is saved only in this browser.'}</p>
   <div class="card"><h2>Text size</h2><div class="row">${Object.entries(SIZES).map(([k, v]) => `<button class="btn" aria-pressed="${size === k}" onclick="setSize('${k}')">${v[0]}</button>`).join('')}</div></div>
   <div class="card gap"><h2>Demo data</h2><p class="muted">Add sample entries to try the app. They are clearly marked “Demo”.</p><div class="row"><button class="btn alt" onclick="loadDemo()">Load demo data</button><button class="btn alt" onclick="rmDemo()">Remove demo data</button></div></div>
   <div class="card gap"><h2>Backup</h2><p class="muted">Save your data to a .json file, or restore it later.</p><div class="row"><button class="btn alt" onclick="exportData()">Download backup</button>
@@ -113,6 +117,9 @@ function settingsView() {
 }
 function render() {
   $('#nav').innerHTML = PAGES.map(p => `<a href="#${p[0]}" class="${p[0] === page ? 'on' : ''}" ${p[0] === page ? 'aria-current="page"' : ''}>${p[1]}</a>`).join('');
+  $('#userbox').innerHTML = user
+    ? `<div class="who">Signed in as<br><b>${esc(user)}</b></div><button class="btn alt small" onclick="logout()">Log out</button>`
+    : `<div class="who">Guest mode<br><span class="muted">Saved in this browser only</span></div><button class="btn small" onclick="leaveGuest()">Log in or sign up</button>`;
   $('#main').innerHTML = { dashboard: dashboardView, transactions: transactionsView, reports: reportsView, goals: goalsView, settings: settingsView }[page]();
   if (page === 'transactions') {
     $('#f').value = filter;
@@ -246,16 +253,66 @@ function importData(input) {
 /* ---------- 6. Start ---------- */
 async function init() {
   try { const c = await (await fetch('config.json')).json(); if (Array.isArray(c.categories) && c.categories.length) { CFG = { ...CFG, ...c }; CATS = CFG.categories; CUR = CFG.currency; } } catch (e) {}
-  try {
-    const r = await fetch('api/data');
-    if (r.ok) {
-      const d = await r.json(), local = S; useApi = true;
-      S = (d.tx && d.tx.length) || (d.goals && d.goals.length) ? { tx: d.tx || [], goals: d.goals || [] } : local;
-      if (S === local && (local.tx.length || local.goals.length)) save();   // move browser data to the server once
-    }
+  try {                                                   // is the server running, and am I logged in?
+    const m = await (await fetch('api/me')).json();
+    serverOn = true;
+    if (m.user) { user = m.user; await loadServer(); authed = true; return; }
   } catch (e) {}
+  try { if (localStorage.getItem(MODE_KEY) === 'guest') { loadLocal(); authed = true; } } catch (e) {}
+}
+async function loadServer() {
+  const d = await (await fetch('api/data')).json();
+  S = { tx: d.tx || [], goals: d.goals || [] };
+}
+
+/* ---------- 7. Accounts: log in, sign up, guest ---------- */
+function showAuth(msg) {
+  authed = false; closeModal();
+  $('.app').hidden = true; $('#auth').hidden = false;
+  const reg = authMode === 'register';
+  $('#auth').innerHTML = `<div class="authbox card"><div class="logo">Pennywise</div><p class="tagline">Track your money. Save smarter.</p>
+  ${serverOn ? `<div class="row"><button class="btn" aria-pressed="${!reg}" onclick="authTab('login')">Log in</button><button class="btn" aria-pressed="${reg}" onclick="authTab('register')">Create account</button></div>
+  <form onsubmit="doAuth(event)" novalidate>
+    <label for="au">Username</label><input id="au" autocomplete="username" autocapitalize="none" maxlength="20" placeholder="Letters, numbers or _">
+    <label for="ap">Password${reg ? ' (at least 6 characters)' : ''}</label><input id="ap" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}" maxlength="100">
+    <label class="check"><input type="checkbox" onchange="$('#ap').type = this.checked ? 'text' : 'password'"> Show password</label>
+    <div class="err" id="aerr" role="alert">${esc(msg || '')}</div>
+    <button class="btn full" type="submit">${reg ? 'Create account' : 'Log in'}</button></form>
+  <div class="or"><span>or</span></div>`
+  : `<p class="muted">Accounts need the Pennywise server. Run <b>npm start</b> to turn them on. You can still try the app as a guest.</p>`}
+  <button class="btn alt full" style="margin-top:0" onclick="guestMode()">Continue as Guest</button>
+  <p class="muted small">Guest data stays only in this browser. Create an account to keep your data safe on the server.</p></div>`;
+  const u = $('#au'); if (u) u.focus();
+}
+function authTab(m) { authMode = m; showAuth(); }
+async function doAuth(e) {
+  e.preventDefault();
+  const username = $('#au').value.trim().toLowerCase(), password = $('#ap').value, err = $('#aerr');
+  if (!/^[a-z0-9_]{3,20}$/.test(username)) return err.textContent = 'Username: 3 to 20 letters, numbers or _ only.';
+  if (!password) return err.textContent = 'Please type your password.';
+  if (authMode === 'register' && password.length < 6) return err.textContent = 'Password must be at least 6 characters.';
+  try {
+    const r = await fetch('api/' + authMode, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+    const d = await r.json();
+    if (!r.ok) return err.textContent = d.error || 'Something went wrong. Please try again.';
+    user = d.user; await loadServer(); authed = true;
+    try { localStorage.removeItem(MODE_KEY); } catch (x) {}
+    location.hash = '#dashboard'; route(); toast('Welcome, ' + user + '!');
+  } catch (x) { err.textContent = 'Cannot reach the server. Please try again.'; }
+}
+function guestMode() {
+  user = null; loadLocal(); authed = true;
+  try { localStorage.setItem(MODE_KEY, 'guest'); } catch (e) {}
+  location.hash = '#dashboard'; route();
+}
+function leaveGuest() { try { localStorage.removeItem(MODE_KEY); } catch (e) {} authMode = 'login'; showAuth(); }
+async function logout() {
+  try { await fetch('api/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch (e) {}
+  user = null; S = { tx: [], goals: [] }; authMode = 'login'; showAuth('You have been logged out.');
 }
 function route() {
+  if (!authed) return showAuth();
+  $('#auth').hidden = true; $('.app').hidden = false;
   const h = location.hash.slice(1);
   page = PAGES.some(p => p[0] === h) ? h : 'dashboard';
   render(); window.scrollTo(0, 0);
